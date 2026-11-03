@@ -5,13 +5,16 @@
   "scripts": {
     "dev": "vite dev --port 3001",
     "build": "vite build",
-    "typecheck": "tsc"
+    "typecheck": "tsc",
+    "start": "srvx serve --prod --entry dist/server/server.js --static ../client --host 0.0.0.0 --port 3000"
   },
   "dependencies": {
     "@tanstack/react-router": "catalog:",
     "@tanstack/react-start": "catalog:",
+    "@workspace/ui": "workspace:*",
     "react": "catalog:",
-    "react-dom": "catalog:"
+    "react-dom": "catalog:",
+    "srvx": "catalog:"
   },
   "devDependencies": {
     "@tailwindcss/vite": "catalog:",

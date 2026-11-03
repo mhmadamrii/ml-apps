@@ -1,3 +1,4 @@
+import os
 from contextlib import asynccontextmanager
 
 import numpy as np
@@ -21,7 +22,10 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="adano", lifespan=lifespan)
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+# Same-origin by default (the web app proxies /api). Opt in to cross-origin callers explicitly.
+_origins = [o.strip() for o in os.environ.get("ADANO_CORS_ORIGINS", "").split(",") if o.strip()]
+if _origins:
+    app.add_middleware(CORSMiddleware, allow_origins=_origins, allow_methods=["*"], allow_headers=["*"])
 
 
 class CategoryIn(BaseModel):

@@ -16,7 +16,7 @@ export const Route = createRootRoute({
       <head>
         <HeadContent />
       </head>
-      <body className="bg-slate-50 text-slate-900 antialiased">
+      <body className="antialiased">
         <Outlet />
         <Scripts />
       </body>

@@ -9,7 +9,7 @@ export default defineConfig({
     proxy: {
       // fraudless-api (FastAPI) runs on :8001; the browser only ever talks to this origin
       '/api': {
-        target: 'http://127.0.0.1:8001',
+        target: process.env.API_URL ?? 'http://127.0.0.1:8001',
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
     },

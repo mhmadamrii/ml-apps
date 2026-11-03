@@ -1,0 +1,107 @@
+# podman compose -f deploy/compose.yaml --env-file deploy/.env up -d --build
+name: ai-apps
+
+services:
+  db:
+    image: docker.io/library/postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in deploy/.env}
+      ADANO_DB_PASSWORD: ${ADANO_DB_PASSWORD:?set ADANO_DB_PASSWORD in deploy/.env}
+      FRAUDLESS_DB_PASSWORD: ${FRAUDLESS_DB_PASSWORD:?set FRAUDLESS_DB_PASSWORD in deploy/.env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./initdb:/docker-entrypoint-initdb.d:ro,Z
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  adano-api:
+    build:
+      context: ../apps/adano-api
+      dockerfile: Containerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg://adano:${ADANO_DB_PASSWORD}@db:5432/adano
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=4).status == 200 else 1)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
+
+  adano-web:
+    build:
+      context: ..
+      dockerfile: deploy/web.Containerfile
+      args:
+        APP: adano
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  fraudless-api:
+    build:
+      context: ../apps/fraudless-api
+      dockerfile: Containerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg://fraudless:${FRAUDLESS_DB_PASSWORD}@db:5432/fraudless
+      FRAUDLESS_MODEL_DIR: /models/v1
+    volumes:
+      # train first: pnpm train:fraudless
+      - ${FRAUDLESS_MODEL_HOST_DIR:-../apps/fraudless-api/models/v1}:/models/v1:ro,Z
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8001/health', timeout=4).status == 200 else 1)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
+
+  fraudless-web:
+    build:
+      context: ..
+      dockerfile: deploy/web.Containerfile
+      args:
+        APP: fraudless
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  gateway:
+    image: docker.io/library/caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-8080}:80"
+      - "${HTTPS_PORT:-8443}:443"
+    environment:
+      ADANO_SITE: ${ADANO_SITE:-http://adano.localhost}
+      FRAUDLESS_SITE: ${FRAUDLESS_SITE:-http://fraudless.localhost}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro,Z
+      - caddy_data:/data
+    depends_on:
+      - adano-web
+      - adano-api
+      - fraudless-web
+      - fraudless-api
+
+volumes:
+  pgdata:
+  caddy_data:

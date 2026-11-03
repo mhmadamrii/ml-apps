@@ -11,6 +11,9 @@
     "test:fraudless-api": "cd apps/fraudless-api && .venv/bin/python -m pytest -q",
     "image:fraudless-api": "cd apps/fraudless-api && podman build -t fraudless-api:phase1 -f Containerfile .",
     "dev:fraudless": "pnpm --filter fraudless dev",
-    "build:fraudless": "pnpm --filter fraudless build"
+    "build:fraudless": "pnpm --filter fraudless build",
+    "deploy:up": "podman compose -f deploy/compose.yaml --env-file deploy/.env up -d --build",
+    "deploy:down": "podman compose -f deploy/compose.yaml --env-file deploy/.env down",
+    "typecheck": "pnpm -r --if-present typecheck"
   }
 }

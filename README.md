@@ -25,6 +25,14 @@ pnpm test:adano-api
 
 Adding a project: `apps/<name>` (+ `apps/<name>-api`), then add `dev:<name>` scripts at the root. Pick a free API port.
 
+## Shared UI (`packages/ui`)
+
+shadcn/ui components (Radix, Tailwind v4) used by every web app: `import { Button } from '@workspace/ui/components/button'`. Theme tokens live in one stylesheet. See `packages/ui/README.md` for adding components and apps.
+
+## Deploying
+
+`deploy/` has a Podman compose bundle for both products (gateway, web, API, Postgres). See `deploy/README.md`; short version: `cp deploy/.env.example deploy/.env`, fill the passwords, `pnpm train:fraudless`, `pnpm deploy:up`.
+
 ## Shared dependency versions (pnpm catalog)
 
 `pnpm-workspace.yaml` has a `catalog:` block holding the version of every shared web dependency (TanStack Start/Router, React, Vite, TypeScript, Tailwind, ...). Apps declare them as `"catalog:"` in their `package.json`, so a bump happens in one place and every app moves together. A new web app copies `apps/fraudless/package.json` and `vite.config.ts`; add a dependency to the catalog only when two apps need it.

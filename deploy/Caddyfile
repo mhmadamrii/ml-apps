@@ -1,0 +1,27 @@
+# One gateway, one hostname per product. /api/* goes to that product's API with the prefix stripped
+# (same contract as the Vite dev proxy); everything else goes to its web app.
+# Set ADANO_SITE / FRAUDLESS_SITE to real domains (no http:// prefix) and Caddy obtains TLS certificates itself.
+{
+	auto_https disable_redirects
+}
+
+{$ADANO_SITE:http://adano.localhost} {
+	handle_path /api/* {
+		reverse_proxy adano-api:8000
+	}
+	handle {
+		reverse_proxy adano-web:3000
+	}
+}
+
+{$FRAUDLESS_SITE:http://fraudless.localhost} {
+	request_body {
+		max_size 8MB
+	}
+	handle_path /api/* {
+		reverse_proxy fraudless-api:8001
+	}
+	handle {
+		reverse_proxy fraudless-web:3000
+	}
+}

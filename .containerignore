@@ -1,0 +1,12 @@
+# Context for root-level builds (deploy/web.Containerfile). The API images use their own app-dir context.
+.git
+**/node_modules
+**/dist
+**/.output
+**/.tanstack
+**/.venv
+**/__pycache__
+**/.pytest_cache
+apps/*-api
+workflows
+deploy

@@ -1,5 +1,14 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useMemo, useState } from 'react'
+import { Alert, AlertDescription, AlertTitle } from '@workspace/ui/components/alert'
+import { Badge } from '@workspace/ui/components/badge'
+import { Button } from '@workspace/ui/components/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@workspace/ui/components/card'
+import { Checkbox } from '@workspace/ui/components/checkbox'
+import { Input } from '@workspace/ui/components/input'
+import { Label } from '@workspace/ui/components/label'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@workspace/ui/components/table'
+import { Textarea } from '@workspace/ui/components/textarea'
 import { api, ApiError, type ModelInfo, type PredictResponse } from '../api'
 
 export const Route = createFileRoute('/')({ component: Home })
@@ -41,55 +50,48 @@ function Home() {
   }, [result, flaggedOnly])
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8">
-      <header className="mb-6">
+    <div className="mx-auto max-w-5xl space-y-6 px-4 py-8">
+      <header className="space-y-2">
         <h1 className="text-2xl font-semibold">FraudLess</h1>
-        <p className="text-sm text-slate-600">Upload a transaction CSV and review which rows look potentially suspicious.</p>
+        <p className="text-sm text-muted-foreground">Upload a transaction CSV and review which rows look potentially suspicious.</p>
         <ModelBadge info={info} error={infoError} />
       </header>
 
-      <form onSubmit={run} className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-        <label className="block text-sm font-medium" htmlFor="file">
-          Transactions file (.csv, UTF-8, comma-separated)
-        </label>
-        <input
-          id="file"
-          data-testid="file-input"
-          type="file"
-          accept=".csv,text/csv"
-          className="mt-2 block w-full text-sm file:mr-3 file:rounded file:border-0 file:bg-slate-900 file:px-3 file:py-1.5 file:text-white"
-          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-        />
-
-        <details className="mt-3 text-sm">
-          <summary className="cursor-pointer text-slate-700">Column names differ from the schema? Map them</summary>
-          <p className="mt-2 text-slate-600">
-            JSON of canonical field to your column header. Required: <code>amount</code>. Fields:{' '}
-            {info?.supported_schema_fields.filter((f) => f.requirement !== 'training_only').map((f) => f.name).join(', ') ?? '…'}
-          </p>
-          <textarea
-            data-testid="mapping-input"
-            rows={3}
-            value={mapping}
-            onChange={(e) => setMapping(e.target.value)}
-            placeholder={MAPPING_PLACEHOLDER}
-            className="mt-2 w-full rounded border border-slate-300 p-2 font-mono text-xs"
-          />
-        </details>
-
-        <button
-          data-testid="run"
-          disabled={!file || busy}
-          className="mt-4 rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
-        >
-          {busy ? 'Scoring…' : 'Run audit'}
-        </button>
-      </form>
+      <Card>
+        <form onSubmit={run}>
+          <CardHeader>
+            <CardTitle>Transactions file</CardTitle>
+            <CardDescription>.csv, UTF-8, comma-separated. Processed in memory, never stored.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="file">File</Label>
+              <Input id="file" data-testid="file-input" type="file" accept=".csv,text/csv" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+            </div>
+            <details className="text-sm">
+              <summary className="cursor-pointer text-muted-foreground">Column names differ from the schema? Map them</summary>
+              <p className="mt-2 text-muted-foreground">
+                JSON of canonical field to your column header. Required: <code>amount</code>. Fields:{' '}
+                {info?.supported_schema_fields.filter((f) => f.requirement !== 'training_only').map((f) => f.name).join(', ') ?? '…'}
+              </p>
+              <Textarea
+                data-testid="mapping-input"
+                rows={3}
+                value={mapping}
+                onChange={(e) => setMapping(e.target.value)}
+                placeholder={MAPPING_PLACEHOLDER}
+                className="mt-2 font-mono text-xs"
+              />
+            </details>
+            <Button data-testid="run" disabled={!file || busy}>
+              {busy ? 'Scoring…' : 'Run audit'}
+            </Button>
+          </CardContent>
+        </form>
+      </Card>
 
       {error && <ErrorBox error={error} />}
-      {result && (
-        <Results result={result} rows={rows} flaggedOnly={flaggedOnly} setFlaggedOnly={setFlaggedOnly} />
-      )}
+      {result && <Results result={result} rows={rows} flaggedOnly={flaggedOnly} setFlaggedOnly={setFlaggedOnly} />}
     </div>
   )
 }
@@ -97,37 +99,41 @@ function Home() {
 function ModelBadge({ info, error }: { info: ModelInfo | null; error: string }) {
   if (error)
     return (
-      <p data-testid="api-down" className="mt-3 rounded bg-red-50 p-2 text-sm text-red-800">
-        Cannot reach the scoring API ({error}). Start it with <code>pnpm dev:fraudless-api</code>.
-      </p>
+      <Alert variant="destructive" data-testid="api-down">
+        <AlertTitle>Cannot reach the scoring API</AlertTitle>
+        <AlertDescription>
+          {error}. Start it with <code>pnpm dev:fraudless-api</code>.
+        </AlertDescription>
+      </Alert>
     )
   if (!info) return null
   const m = info.metrics.test
   return (
-    <p data-testid="model-badge" className="mt-3 rounded bg-amber-50 p-2 text-xs text-amber-900">
-      Model <b>{info.model_version}</b> ({info.model_type}) · trained on simulated data · test PR-AUC {m.pr_auc.toFixed(2)} (random{' '}
-      {m.prevalence.toFixed(4)}), precision {(m.precision * 100).toFixed(0)}%, recall {(m.recall * 100).toFixed(0)}% · proof of concept,
-      not a fraud decision system.
+    <p data-testid="model-badge" className="rounded-md bg-muted p-2 text-xs text-muted-foreground">
+      Model <b className="text-foreground">{info.model_version}</b> ({info.model_type}) · trained on simulated data · test PR-AUC{' '}
+      {m.pr_auc.toFixed(2)} (random {m.prevalence.toFixed(4)}), precision {(m.precision * 100).toFixed(0)}%, recall{' '}
+      {(m.recall * 100).toFixed(0)}% · proof of concept, not a fraud decision system.
     </p>
   )
 }
 
 function ErrorBox({ error }: { error: ApiError | Error }) {
-  const api = error instanceof ApiError ? error : null
-  const rejected = (api?.details.rejected_rows as { row_id: number }[] | undefined) ?? []
+  const apiErr = error instanceof ApiError ? error : null
   return (
-    <div data-testid="error" className="mt-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-900">
-      <p className="font-medium">
-        {api ? `${api.code}: ` : ''}
+    <Alert variant="destructive" data-testid="error">
+      <AlertTitle>
+        {apiErr ? `${apiErr.code}: ` : ''}
         {error.message}
-      </p>
-      {api && Object.keys(api.details).length > 0 && (
-        <pre className="mt-2 overflow-x-auto whitespace-pre-wrap text-xs">{JSON.stringify(api.details, null, 2)}</pre>
+      </AlertTitle>
+      {apiErr && Object.keys(apiErr.details).length > 0 && (
+        <AlertDescription>
+          <pre className="overflow-x-auto whitespace-pre-wrap text-xs">{JSON.stringify(apiErr.details, null, 2)}</pre>
+        </AlertDescription>
       )}
-      {rejected.length === 0 && api?.code === 'missing_required_columns' && (
-        <p className="mt-2">Use the column mapping above to point a canonical field at one of your columns.</p>
+      {apiErr?.code === 'missing_required_columns' && (
+        <AlertDescription>Use the column mapping above to point a canonical field at one of your columns.</AlertDescription>
       )}
-    </div>
+    </Alert>
   )
 }
 
@@ -139,10 +145,10 @@ function Results(p: {
 }) {
   const { result: r } = p
   return (
-    <section className="mt-6 space-y-6" data-testid="results">
-      <div className="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900" data-testid="disclaimer">
-        {r.disclaimer}
-      </div>
+    <section className="space-y-6" data-testid="results">
+      <Alert data-testid="disclaimer">
+        <AlertDescription>{r.disclaimer}</AlertDescription>
+      </Alert>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Tile label="Rows in file" value={r.total_rows} testid="t-total" />
@@ -150,15 +156,15 @@ function Results(p: {
         <Tile label="Rejected" value={r.rejected_row_count} testid="t-rejected" tone={r.rejected_row_count ? 'warn' : undefined} />
         <Tile label="Potentially suspicious" value={r.flagged_rows} testid="t-flagged" tone={r.flagged_rows ? 'alert' : undefined} />
       </div>
-      <p className="text-xs text-slate-600">
-        Flag threshold {r.threshold.toFixed(4)}. Risk score is a model-estimated probability under the training prevalence (about 0.13%),
-        not a certainty. Run {r.run_id ?? 'not recorded'}.
+      <p className="text-xs text-muted-foreground">
+        Flag threshold {r.threshold.toFixed(4)}. Risk score is a model-estimated probability under the training prevalence (about 0.13%), not a
+        certainty. Run {r.run_id ?? 'not recorded'}.
       </p>
 
       {r.warnings.length > 0 && (
-        <div data-testid="warnings">
-          <h2 className="mb-2 text-sm font-semibold">Data quality warnings</h2>
-          <ul className="list-disc space-y-1 pl-5 text-sm text-slate-700">
+        <div data-testid="warnings" className="space-y-2">
+          <h2 className="text-sm font-semibold">Data quality warnings</h2>
+          <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
             {r.warnings.map((w, i) => (
               <li key={i}>
                 <code className="text-xs">{w.code}</code> {w.message}
@@ -168,66 +174,66 @@ function Results(p: {
         </div>
       )}
 
-      <div>
-        <div className="mb-2 flex items-center justify-between">
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold">Scored rows</h2>
           <div className="flex items-center gap-4 text-sm">
-            <label className="flex items-center gap-1">
-              <input type="checkbox" data-testid="flagged-only" checked={p.flaggedOnly} onChange={(e) => p.setFlaggedOnly(e.target.checked)} />
+            <Label className="gap-2 font-normal">
+              <Checkbox data-testid="flagged-only" checked={p.flaggedOnly} onCheckedChange={(v) => p.setFlaggedOnly(v === true)} />
               Flagged only
-            </label>
-            <button data-testid="download" className="rounded border border-slate-300 px-2 py-1" onClick={() => download(r)}>
+            </Label>
+            <Button type="button" variant="outline" size="sm" data-testid="download" onClick={() => download(r)}>
               Download CSV
-            </button>
+            </Button>
           </div>
         </div>
-        <div className="overflow-x-auto rounded border border-slate-200 bg-white">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-slate-100 text-xs uppercase text-slate-600">
-              <tr>
-                <th className="px-3 py-2">Row</th>
-                <th className="px-3 py-2">Transaction</th>
-                <th className="px-3 py-2">Result</th>
-                <th className="px-3 py-2 text-right">Risk score</th>
-                <th className="px-3 py-2">Unknown inputs</th>
-              </tr>
-            </thead>
-            <tbody>
+        <Card className="py-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Row</TableHead>
+                <TableHead>Transaction</TableHead>
+                <TableHead>Result</TableHead>
+                <TableHead className="text-right">Risk score</TableHead>
+                <TableHead>Unknown inputs</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {p.rows.map((x) => (
-                <tr key={x.row_id} data-testid="result-row" data-prediction={x.prediction} className="border-t border-slate-100">
-                  <td className="px-3 py-2">{x.row_id}</td>
-                  <td className="px-3 py-2 font-mono text-xs">{x.transaction_id}</td>
-                  <td className="px-3 py-2">
+                <TableRow key={x.row_id} data-testid="result-row" data-prediction={x.prediction}>
+                  <TableCell>{x.row_id}</TableCell>
+                  <TableCell className="font-mono text-xs">{x.transaction_id}</TableCell>
+                  <TableCell>
                     {x.prediction === 'potentially_suspicious' ? (
-                      <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800">potentially suspicious</span>
+                      <Badge variant="destructive">potentially suspicious</Badge>
                     ) : (
-                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-700">not flagged</span>
+                      <Badge variant="secondary">not flagged</Badge>
                     )}
-                  </td>
-                  <td className="px-3 py-2 text-right tabular-nums">{x.risk_score.toFixed(4)}</td>
-                  <td className="px-3 py-2 text-xs text-slate-600">{x.missing_model_inputs.join(', ') || '-'}</td>
-                </tr>
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">{x.risk_score.toFixed(4)}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{x.missing_model_inputs.join(', ') || '-'}</TableCell>
+                </TableRow>
               ))}
               {p.rows.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="px-3 py-4 text-center text-slate-500">
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center text-muted-foreground">
                     No rows to show.
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               )}
-            </tbody>
-          </table>
-        </div>
+            </TableBody>
+          </Table>
+        </Card>
       </div>
 
       {r.rejected_rows.length > 0 && (
-        <div data-testid="rejected">
-          <h2 className="mb-2 text-sm font-semibold">
-            Rejected rows ({r.rejected_row_count}){r.rejected_rows_truncated && ', first ' + r.rejected_rows.length + ' shown'}
+        <div data-testid="rejected" className="space-y-2">
+          <h2 className="text-sm font-semibold">
+            Rejected rows ({r.rejected_row_count}){r.rejected_rows_truncated && `, first ${r.rejected_rows.length} shown`}
           </h2>
           <ul className="space-y-1 text-sm">
             {r.rejected_rows.map((x) => (
-              <li key={x.row_id} className="rounded border border-red-100 bg-white p-2">
+              <li key={x.row_id} className="rounded-md border p-2">
                 <b>Row {x.row_id}</b>: {x.errors.map((e) => `${e.field} (${e.message})`).join('; ')}
               </li>
             ))}
@@ -239,14 +245,14 @@ function Results(p: {
 }
 
 function Tile({ label, value, testid, tone }: { label: string; value: number; testid: string; tone?: 'warn' | 'alert' }) {
-  const color = tone === 'alert' ? 'text-red-700' : tone === 'warn' ? 'text-amber-700' : 'text-slate-900'
+  const color = tone === 'alert' ? 'text-destructive' : tone === 'warn' ? 'text-amber-600' : ''
   return (
-    <div className="rounded border border-slate-200 bg-white p-3">
-      <div className="text-xs text-slate-600">{label}</div>
+    <Card className="gap-1 p-3">
+      <div className="text-xs text-muted-foreground">{label}</div>
       <div data-testid={testid} className={`text-2xl font-semibold tabular-nums ${color}`}>
         {value}
       </div>
-    </div>
+    </Card>
   )
 }
 

@@ -68,4 +68,8 @@ def load_artifact(model_dir: Path) -> tuple[Pipeline, dict]:
         raise ArtifactError(f"artifact schema {meta.get('schema_version')!r} != service schema {SCHEMA_VERSION!r}")
     if sha256_file(model_path) != meta.get("artifact_sha256"):
         raise ArtifactError("model.joblib does not match artifact_sha256 in metadata.json (corrupt or modified)")
+    # pickles are only guaranteed to load under the library versions that wrote them
+    trained_with = meta.get("libraries", {}).get("scikit-learn")
+    if trained_with and trained_with != sklearn.__version__:
+        raise ArtifactError(f"artifact was trained with scikit-learn {trained_with} but this environment has {sklearn.__version__}; retrain or pin the environment")
     return joblib.load(model_path), meta

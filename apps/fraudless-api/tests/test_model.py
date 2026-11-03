@@ -93,3 +93,16 @@ def test_load_artifact_rejects_missing_tampered_and_wrong_schema(model_dir, tmp_
     (wrong / "metadata.json").write_text(json.dumps(meta))
     with pytest.raises(ArtifactError, match="schema"):
         load_artifact(wrong)
+
+
+def test_load_artifact_rejects_sklearn_version_mismatch(model_dir, tmp_path):
+    import json
+    import shutil
+
+    other = tmp_path / "other-sklearn"
+    shutil.copytree(model_dir, other)
+    meta = json.loads((other / "metadata.json").read_text())
+    meta["libraries"]["scikit-learn"] = "0.0.1"
+    (other / "metadata.json").write_text(json.dumps(meta))
+    with pytest.raises(ArtifactError, match="scikit-learn"):
+        load_artifact(other)

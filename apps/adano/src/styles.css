@@ -1,0 +1,4 @@
+@import "@workspace/ui/globals.css";
+
+/* this app's own classes (the shared components are covered by globals.css) */
+@source "./";
